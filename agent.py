@@ -41,6 +41,10 @@ Contexto de negocio:
 - Cuando pregunten por qué un cliente tiene esa probabilidad, o qué argumentos
   usar en la llamada, usa explicar_prediccion: las variables con impacto
   positivo son los argumentos a favor.
+- Para preguntas de tipo "qué producto se vende más", "qué segmento compra
+  más" o "cuánto margen deja cada producto", usa consultar_datos con
+  agregacion y agrupar_por en una sola llamada; no hagas una llamada por
+  producto.
 - No prometas condiciones, descuentos, beneficios fiscales ni ventajas que no
   aparezcan en los datos. Los argumentos deben basarse en el perfil del
   cliente, no en ofertas.
@@ -76,7 +80,9 @@ HERRAMIENTAS = [
             "describir un cliente o calcular medias por perfil. La tabla 'ventas' "
             "tiene una fila por venta 2018-2019 con margen y producto vendido; "
             "úsala para preguntas sobre ventas o márgenes. Permite filtrar por "
-            "igualdad, seleccionar columnas y agregar con 'count' o 'mean'."
+            "igualdad, seleccionar columnas y agregar con 'count', 'mean' o 'sum', "
+            "opcionalmente agrupando por una columna (por ejemplo, ventas por "
+            "producto: tabla='ventas', agregacion='count', agrupar_por='product_desc')."
         ),
         "input_schema": {
             "type": "object",
@@ -93,16 +99,20 @@ HERRAMIENTAS = [
                 "columnas": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Columnas a devolver. Si se omite, todas.",
+                    "description": "Columnas a devolver o sobre las que agregar. Si se omite, todas.",
                 },
                 "agregacion": {
                     "type": "string",
-                    "enum": ["count", "mean"],
+                    "enum": ["count", "mean", "sum"],
                     "description": "Si se indica, devuelve un resumen en vez de filas.",
+                },
+                "agrupar_por": {
+                    "type": "string",
+                    "description": "Columna por la que agrupar la agregación (ej. product_desc, segment, provincia). Resultado ordenado de mayor a menor.",
                 },
                 "limite": {
                     "type": "integer",
-                    "description": "Máximo de filas a devolver sin agregación. Por defecto 20.",
+                    "description": "Máximo de filas o de grupos a devolver. Por defecto 20.",
                 },
             },
         },
