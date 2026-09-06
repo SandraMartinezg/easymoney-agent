@@ -7,6 +7,9 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 
 from tools.consultar_datos import consultar_datos
+from tools.obtener_segmento import obtener_segmento
+from tools.predecir_propension import predecir_propension
+from tools.recomendar_contactos import recomendar_contactos
 
 load_dotenv()
 
@@ -17,6 +20,22 @@ Ayudas al equipo comercial a decidir a quién contactar y con qué argumentos.
 
 Dispones de herramientas que consultan datos reales. Úsalas siempre que la
 pregunta requiera datos; nunca inventes cifras ni clientes.
+
+Contexto de negocio:
+- Hay modelo de propensión para dos productos: pension_plan y em_acount.
+- Una venta de pension_plan deja unos 5.976 € de margen; una de em_acount, unos
+  70 €. La campaña recomendada es pension_plan.
+- La estrategia de campaña vigente es la híbrida: contactar a todos los
+  clientes de los grupos "Clientes de nómina" y "Particulares con tarjeta", más
+  el top 20% del modelo en el resto de grupos. No se contacta a "Universitarios
+  inactivos" ni a "Sin producto".
+- Cuando pregunten "a quién llamo" o "a quién contacto", usa
+  recomendar_contactos, que aplica esa estrategia. Usa predecir_propension solo
+  cuando pidan explícitamente la probabilidad de un cliente o el ranking del
+  modelo sin aplicar la estrategia.
+- Para resumir un cliente, combina consultar_datos (sus datos y productos),
+  obtener_segmento (su grupo y la acción recomendada) y predecir_propension
+  (su probabilidad para pension_plan).
 
 Sobre el dataset (df_powerbi.csv): cada fila es una venta, no un cliente, así
 que un mismo cliente (columna cid) aparece una vez por producto contratado.
@@ -62,10 +81,83 @@ HERRAMIENTAS = [
             },
         },
     },
+    {
+        "name": "predecir_propension",
+        "description": (
+            "Probabilidad de que un cliente contrate un producto según el modelo "
+            "de propensión. Con cliente_id devuelve solo ese cliente; sin él, "
+            "devuelve el top_n de clientes elegibles (que aún no tienen el producto)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "producto": {
+                    "type": "string",
+                    "enum": ["pension_plan", "em_acount"],
+                    "description": "Producto a predecir.",
+                },
+                "cliente_id": {
+                    "type": "integer",
+                    "description": "Identificador del cliente (cid). Omitir para obtener un ranking.",
+                },
+                "top_n": {
+                    "type": "integer",
+                    "description": "Número de clientes del ranking. Por defecto 10.",
+                },
+            },
+            "required": ["producto"],
+        },
+    },
+    {
+        "name": "obtener_segmento",
+        "description": (
+            "Grupo de segmentación de un cliente, con la descripción del perfil "
+            "y la acción comercial recomendada para ese grupo."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cliente_id": {
+                    "type": "integer",
+                    "description": "Identificador del cliente (cid).",
+                },
+            },
+            "required": ["cliente_id"],
+        },
+    },
+    {
+        "name": "recomendar_contactos",
+        "description": (
+            "Lista priorizada de clientes a contactar aplicando la estrategia de "
+            "campaña vigente (grupos núcleo completos más el top del modelo en el "
+            "resto). Es la herramienta para responder 'a quién llamo hoy'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "producto": {
+                    "type": "string",
+                    "enum": ["pension_plan", "em_acount"],
+                    "description": "Producto de la campaña. Por defecto pension_plan.",
+                },
+                "n": {
+                    "type": "integer",
+                    "description": "Número de clientes a devolver. Por defecto 20.",
+                },
+                "top_resto_pct": {
+                    "type": "integer",
+                    "description": "Porcentaje del modelo a contactar fuera del núcleo. Por defecto 20.",
+                },
+            },
+        },
+    },
 ]
 
 FUNCIONES = {
     "consultar_datos": consultar_datos,
+    "predecir_propension": predecir_propension,
+    "obtener_segmento": obtener_segmento,
+    "recomendar_contactos": recomendar_contactos,
 }
 
 cliente = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -116,6 +208,6 @@ def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
 if __name__ == "__main__":
     import sys
 
-    pregunta = " ".join(sys.argv[1:]) or "¿Cuántos clientes tienen pension_plan?"
+    pregunta = " ".join(sys.argv[1:]) or "¿A quién llamo hoy para vender pension_plan?"
     texto, _ = responder(pregunta)
     print(texto)
