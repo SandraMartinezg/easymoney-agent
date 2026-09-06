@@ -7,6 +7,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 
 from tools.consultar_datos import consultar_datos
+from tools.explicar_prediccion import explicar_prediccion
 from tools.obtener_segmento import obtener_segmento
 from tools.predecir_propension import predecir_propension
 from tools.recomendar_contactos import recomendar_contactos
@@ -36,6 +37,12 @@ Contexto de negocio:
 - Para resumir un cliente, combina consultar_datos sobre la tabla clientes
   (sus datos y productos), obtener_segmento (su grupo y la acción recomendada)
   y predecir_propension (su probabilidad para pension_plan).
+- Cuando pregunten por qué un cliente tiene esa probabilidad, o qué argumentos
+  usar en la llamada, usa explicar_prediccion: las variables con impacto
+  positivo son los argumentos a favor.
+- No prometas condiciones, descuentos, beneficios fiscales ni ventajas que no
+  aparezcan en los datos. Los argumentos deben basarse en el perfil del
+  cliente, no en ofertas.
 
 Sobre los datos:
 - Tabla "clientes": una fila por cliente (cid), 456.373 clientes, foto a mayo
@@ -167,6 +174,28 @@ HERRAMIENTAS = [
             },
         },
     },
+    {
+        "name": "explicar_prediccion",
+        "description": (
+            "Explica la probabilidad de un cliente para pension_plan: devuelve las "
+            "variables que más pesan en su predicción, con su valor y su impacto "
+            "(positivo sube la probabilidad, negativo la baja)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cliente_id": {
+                    "type": "integer",
+                    "description": "Identificador del cliente (cid).",
+                },
+                "top_variables": {
+                    "type": "integer",
+                    "description": "Número de variables a devolver. Por defecto 5.",
+                },
+            },
+            "required": ["cliente_id"],
+        },
+    },
 ]
 
 FUNCIONES = {
@@ -174,6 +203,7 @@ FUNCIONES = {
     "predecir_propension": predecir_propension,
     "obtener_segmento": obtener_segmento,
     "recomendar_contactos": recomendar_contactos,
+    "explicar_prediccion": explicar_prediccion,
 }
 
 cliente = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
