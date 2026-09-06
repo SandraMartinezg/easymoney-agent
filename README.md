@@ -6,24 +6,17 @@ Un usuario de negocio pregunta en lenguaje natural ("¿a quién llamo hoy para v
 
 Proyecto complementario al TFM del Máster en Data Science & AI de Nuclio Digital School. No forma parte de las tareas evaluadas.
 
+
 ## Problema de negocio
 
-El TFM produce un modelo de propensión y una segmentación de clientes, pero el equipo comercial no los consume directamente: necesita al equipo de datos para traducir cada pregunta en una consulta. Este agente cierra esa distancia.
+El TFM produce un modelo de propensión (Tarea 2), una segmentación de clientes (Tarea 3) y una estrategia de campaña con su impacto económico (Tarea 4). Pero el equipo comercial no consume esos resultados directamente: necesita al equipo de datos para traducir cada pregunta en una consulta. Este agente cierra esa distancia.
 
-- Facilita la adopción del modelo por parte de negocio.
+- Facilita la adopción del modelo y de la estrategia por parte de negocio.
 - Reduce el tiempo de preparación por contacto.
 - Da autonomía a marketing sin depender del equipo de datos.
 
-No mejora el modelo ni sustituye la decisión humana: propone, la persona decide.
+El TFM decide qué campaña hacer (nivel estratégico); el agente ayuda a ejecutarla cada día (nivel operativo). No mejora el modelo ni sustituye la decisión humana: propone, la persona decide.
 
-## Herramientas del agente
-
-| Herramienta | Qué hace | Origen |
-|---|---|---|
-| `consultar_datos` | Filtra y agrega sobre `df_powerbi.csv` | Tarea 1 |
-| `predecir_propension` | Probabilidad de compra de un producto por cliente | Modelo de la Tarea 2 |
-| `obtener_segmento` | Segmento al que pertenece un cliente | Clustering de la Tarea 3 |
-| `explicar_prediccion` | Variables que más pesan en la predicción | SHAP sobre el modelo de la Tarea 2 |
 
 ## Stack
 
@@ -31,6 +24,21 @@ No mejora el modelo ni sustituye la decisión humana: propone, la persona decide
 - API de Anthropic con tool use
 - Streamlit
 - pandas, scikit-learn, shap
+
+
+## ## 
+## Herramientas del agente
+
+| Herramienta | Qué hace | Origen |
+|---|---|---|
+| `consultar_datos` | Filtra y agrega sobre `df_powerbi.csv` | Tarea 1 |
+| `predecir_propension` | Probabilidad de compra de un producto por cliente | Modelo de la Tarea 2 |
+| `obtener_segmento` | Grupo al que pertenece un cliente | Clustering de la Tarea 3 |
+| `recomendar_contactos` | Lista priorizada de clientes a contactar según la estrategia de campaña | Estrategia híbrida de la Tarea 4 |
+| `explicar_prediccion` | Variables que más pesan en la predicción de un cliente | SHAP sobre el modelo de la Tarea 2 |
+
+
+
 
 ## Estructura del repo
 
@@ -48,10 +56,11 @@ easymoney-agent/
 
 ## Datos y modelos
 
-No se versionan. Copiar desde el repo del TFM:
+No se versionan. Copiar desde el repo del TFM a `data/`:
 
-- `data/df_powerbi.csv`: 240.773 filas y 32 columnas. Ventas mensuales 2018-2019 con datos sociodemográficos, actividad comercial y productos. La columna `em_acount` se escribe así intencionadamente.
-- `models/`: modelo de propensión (Tarea 2) y modelo de segmentación (Tarea 3).
+- `df_powerbi.csv` (desde `data/processed/`): 240.773 filas y 32 columnas. Ventas mensuales 2018-2019 con datos sociodemográficos, actividad comercial y productos. Separador `;` y coma decimal. La columna `em_acount` se escribe así intencionadamente.
+- `scoring_grupo_pension_plan.csv` y `scoring_grupo_em_acount.csv` (desde `data/app/`): probabilidad de compra y grupo de segmentación de cada cliente elegible, generados por la Tarea 4 a partir de los modelos de las Tareas 2 y 3.
+- `models/`: modelo de propensión de la Tarea 2 exportado con joblib, necesario para las explicaciones SHAP.
 
 ## Fases
 
