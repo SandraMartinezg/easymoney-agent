@@ -9,12 +9,26 @@ RUTA_DATA = Path(__file__).resolve().parent.parent / "data"
 TABLAS = ["clientes", "ventas"]
 
 
+def _compactar(df: pd.DataFrame) -> pd.DataFrame:
+    """Reduce memoria: textos repetidos como categoría y números en 32 bits."""
+    for columna in df.columns:
+        if df[columna].dtype == object or pd.api.types.is_string_dtype(df[columna]):
+            df[columna] = df[columna].astype("category")
+        elif pd.api.types.is_float_dtype(df[columna]):
+            df[columna] = df[columna].astype("float32")
+        elif pd.api.types.is_integer_dtype(df[columna]):
+            df[columna] = pd.to_numeric(df[columna], downcast="integer")
+    return df
+
+
 @lru_cache(maxsize=2)
 def _cargar_tabla(tabla: str) -> pd.DataFrame:
-    """Lee una tabla una sola vez y la mantiene en memoria."""
+    """Lee una tabla una sola vez, compactada, y la mantiene en memoria."""
     if tabla == "clientes":
-        return pd.read_csv(RUTA_DATA / "clientes.csv").rename(columns={"pk_cid": "cid"})
-    return pd.read_csv(RUTA_DATA / "df_powerbi.csv", sep=";", decimal=",")
+        df = pd.read_csv(RUTA_DATA / "clientes.csv").rename(columns={"pk_cid": "cid"})
+    else:
+        df = pd.read_csv(RUTA_DATA / "df_powerbi.csv", sep=";", decimal=",")
+    return _compactar(df)
 
 
 def _cargar_datos() -> pd.DataFrame:
@@ -85,13 +99,14 @@ def consultar_datos(
         raise ValueError(f"Agregación no admitida: '{agregacion}'. Usa 'count', 'mean' o 'sum'.")
 
     if agregacion and agrupar_por:
-        grupos = df.groupby(agrupar_por)
+        grupos = df.groupby(agrupar_por, observed=True)
+        numericas = [c for c in df.select_dtypes("number").columns if c != agrupar_por]
         if agregacion == "count":
             resumen = grupos.size().rename("count").to_frame()
         elif agregacion == "mean":
-            resumen = grupos[[c for c in df.select_dtypes("number").columns if c != agrupar_por]].mean().round(2)
+            resumen = grupos[numericas].mean().round(2)
         else:
-            resumen = grupos[[c for c in df.select_dtypes("number").columns if c != agrupar_por]].sum().round(2)
+            resumen = grupos[numericas].sum().round(2)
         resumen = resumen.sort_values(resumen.columns[0], ascending=False).head(limite)
         return {"tabla": tabla, "n_filas": n_filas, "resultado": resumen.reset_index().to_dict(orient="records")}
 
