@@ -48,6 +48,7 @@ easymoney-agent/
 ├── app/
 │   └── streamlit_app.py  # Interfaz de chat
 ├── tools/                # Una función por herramienta, sin dependencia del LLM
+├── scripts/              # Preparación de datos (se ejecuta una vez)
 ├── data/                 # df_powerbi.csv (no versionado)
 ├── models/               # Modelos de las Tareas 2 y 3 (no versionados)
 ├── requirements.txt
@@ -60,6 +61,7 @@ No se versionan. Copiar desde el repo del TFM a `data/`:
 
 - `df_powerbi.csv` (desde `data/processed/`): 240.773 filas y 32 columnas. Ventas mensuales 2018-2019 con datos sociodemográficos, actividad comercial y productos. Separador `;` y coma decimal. La columna `em_acount` se escribe así intencionadamente.
 - `scoring_grupo_pension_plan.csv` y `scoring_grupo_em_acount.csv` (desde `data/app/`): probabilidad de compra y grupo de segmentación de cada cliente elegible, generados por la Tarea 4 a partir de los modelos de las Tareas 2 y 3.
+-  `clientes.csv`: una fila por cliente con su última foto (mayo 2019). Se genera con `python scripts/preparar_clientes.py RUTA_RAW_DEL_TFM`, donde `RUTA_RAW_DEL_TFM` es la carpeta `data/raw/` del repo del TFM.
 - `models/`: modelo de propensión de la Tarea 2 exportado con joblib, necesario para las explicaciones SHAP.
 
 ## Fases
