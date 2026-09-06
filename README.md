@@ -1,11 +1,12 @@
+
+
 # easymoney-agent
 
 Agente conversacional de cross-selling para easyMoney (fintech ficticia).
 
-Un usuario de negocio pregunta en lenguaje natural ("¿a quién llamo hoy para vender pension_plan?", "resume el cliente 15843") y un LLM con tool use decide qué herramientas Python ejecutar y redacta la respuesta.
+Un usuario de negocio pregunta en lenguaje natural ("¿a quién llamo hoy para vender pension_plan?", "resume el cliente 1264530", "¿por qué tiene tanta probabilidad?") y un LLM con tool use decide qué herramientas Python ejecutar y redacta la respuesta.
 
 Proyecto complementario al TFM del Máster en Data Science & AI de Nuclio Digital School. No forma parte de las tareas evaluadas.
-
 
 ## Problema de negocio
 
@@ -17,28 +18,24 @@ El TFM produce un modelo de propensión (Tarea 2), una segmentación de clientes
 
 El TFM decide qué campaña hacer (nivel estratégico); el agente ayuda a ejecutarla cada día (nivel operativo). No mejora el modelo ni sustituye la decisión humana: propone, la persona decide.
 
-
-## Stack
-
-- Python
-- API de Anthropic con tool use
-- Streamlit
-- pandas, scikit-learn, shap
-
-
-## ## 
 ## Herramientas del agente
 
 | Herramienta | Qué hace | Origen |
 |---|---|---|
-| `consultar_datos` | Filtra y agrega sobre `df_powerbi.csv` | Tarea 1 |
+| `consultar_datos` | Filtra y agrega sobre la tabla de clientes o la de ventas | Tarea 1 |
 | `predecir_propension` | Probabilidad de compra de un producto por cliente | Modelo de la Tarea 2 |
-| `obtener_segmento` | Grupo al que pertenece un cliente | Clustering de la Tarea 3 |
+| `obtener_segmento` | Grupo al que pertenece un cliente, con perfil y acción recomendada | Clustering de la Tarea 3 |
 | `recomendar_contactos` | Lista priorizada de clientes a contactar según la estrategia de campaña | Estrategia híbrida de la Tarea 4 |
 | `explicar_prediccion` | Variables que más pesan en la predicción de un cliente | SHAP sobre el modelo de la Tarea 2 |
 
+Las herramientas son funciones Python puras, sin dependencia del LLM, y se prueban de forma independiente. El LLM decide cuál usar y redacta; solo el código Python toca datos.
 
+## Stack
 
+- Python 3.14
+- API de Anthropic con tool use (modelo `claude-sonnet-5`)
+- Streamlit
+- pandas, pyarrow, scikit-learn, shap
 
 ## Estructura del repo
 
@@ -49,33 +46,41 @@ easymoney-agent/
 │   └── streamlit_app.py  # Interfaz de chat
 ├── tools/                # Una función por herramienta, sin dependencia del LLM
 ├── scripts/              # Preparación de datos (se ejecuta una vez)
-├── data/                 # df_powerbi.csv (no versionado)
-├── models/               # Modelos de las Tareas 2 y 3 (no versionados)
+├── data/                 # Datos (no versionados)
+├── models/               # Modelo exportado (no versionado)
 ├── requirements.txt
 └── .env.example
 ```
 
 ## Datos y modelos
 
-No se versionan. Copiar desde el repo del TFM a `data/`:
+No se versionan. Se copian desde el repo del TFM a `data/` y `models/`:
 
-- `df_powerbi.csv` (desde `data/processed/`): 240.773 filas y 32 columnas. Ventas mensuales 2018-2019 con datos sociodemográficos, actividad comercial y productos. Separador `;` y coma decimal. La columna `em_acount` se escribe así intencionadamente.
-- `scoring_grupo_pension_plan.csv` y `scoring_grupo_em_acount.csv` (desde `data/app/`): probabilidad de compra y grupo de segmentación de cada cliente elegible, generados por la Tarea 4 a partir de los modelos de las Tareas 2 y 3.
--  `clientes.csv`: una fila por cliente con su última foto (mayo 2019). Se genera con `python scripts/preparar_clientes.py RUTA_RAW_DEL_TFM`, donde `RUTA_RAW_DEL_TFM` es la carpeta `data/raw/` del repo del TFM.
-- `models/`: modelo de propensión de la Tarea 2 exportado con joblib, necesario para las explicaciones SHAP.
+- `df_powerbi.csv` (desde `data/processed/`): 240.773 filas, una por venta 2018-2019, con datos del cliente en ese mes. Separador `;` y coma decimal. La columna `em_acount` se escribe así intencionadamente.
+- `clientes.csv`: una fila por cliente (456.373) con su última foto (mayo 2019). Se genera con `python scripts/preparar_clientes.py RUTA_RAW_DEL_TFM`, donde `RUTA_RAW_DEL_TFM` es la carpeta `data/raw/` del repo del TFM.
+- `clientes_grupos.csv` (desde `data/processed/`): grupo de segmentación de cada cliente.
+- `scoring_grupo_pension_plan.csv` y `scoring_grupo_em_acount.csv` (desde `data/app/`): probabilidad de compra y grupo de cada cliente elegible, generados por la Tarea 4.
+- `X_scoring_pension_plan.parquet` (desde `data/processed/`): matriz de variables de los clientes elegibles tal como la ve el modelo, exportada desde el notebook de la Tarea 2.
+- `models/modelo_pension_plan.joblib`: Random Forest de la Tarea 2, exportado desde el notebook con `joblib.dump`. Se entrenó con scikit-learn 1.6.1 y carga con 1.9.0 mostrando un aviso de versión, que se silencia en `explicar_prediccion` tras verificar que las probabilidades recalculadas coinciden con el scoring original.
 
 ## Fases
 
-- **Fase 0**: README y firma de las herramientas, sin LLM.
-- **Fase 1**: `consultar_datos`, bucle del agente e interfaz Streamlit.
-- **Fase 2**: `predecir_propension`, `obtener_segmento` y `explicar_prediccion`.
+- **Fase 0**: README y firma de las herramientas, sin LLM. Completada.
+- **Fase 1**: `consultar_datos`, bucle del agente e interfaz Streamlit. Completada.
+- **Fase 2**: `predecir_propension`, `obtener_segmento`, `recomendar_contactos` y `explicar_prediccion`. Completada.
 
 ## Puesta en marcha
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # y rellenar ANTHROPIC_API_KEY
-streamlit run app/streamlit_app.py
+python -m streamlit run app/streamlit_app.py
+```
+
+Para probar el agente sin interfaz:
+
+```bash
+python agent.py "¿A quién llamo hoy para vender pension_plan?"
 ```
