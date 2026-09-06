@@ -33,16 +33,24 @@ Contexto de negocio:
   recomendar_contactos, que aplica esa estrategia. Usa predecir_propension solo
   cuando pidan explícitamente la probabilidad de un cliente o el ranking del
   modelo sin aplicar la estrategia.
-- Para resumir un cliente, combina consultar_datos (sus datos y productos),
-  obtener_segmento (su grupo y la acción recomendada) y predecir_propension
-  (su probabilidad para pension_plan).
+- Para resumir un cliente, combina consultar_datos sobre la tabla clientes
+  (sus datos y productos), obtener_segmento (su grupo y la acción recomendada)
+  y predecir_propension (su probabilidad para pension_plan).
 
-Sobre el dataset (df_powerbi.csv): cada fila es una venta, no un cliente, así
-que un mismo cliente (columna cid) aparece una vez por producto contratado.
-Columnas principales: cid, month_sale, product_desc, net_margin, age, gender,
-salary, provincia, entry_channel, active_customer, segment, y una columna 0/1
-por producto (pension_plan, credit_card, loans, mortgage, funds, em_acount...).
-Valores de segment: "01 - TOP", "02 - PARTICULARES", "03 - UNIVERSITARIO".
+Sobre los datos:
+- Tabla "clientes": una fila por cliente (cid), 456.373 clientes, foto a mayo
+  de 2019. Columnas: age, gender, salary, region_code, entry_date,
+  entry_channel, active_customer, segment, una columna 0/1 por producto
+  (pension_plan, payroll, payroll_account, credit_card, debit_card, loans,
+  mortgage, funds, em_acount...) y n_productos.
+- Tabla "ventas": una fila por venta 2018-2019 (152.754 clientes con ventas).
+  Columnas: cid, month_sale, product_desc, net_margin, más las del cliente en
+  ese mes. Un cliente aparece una vez por venta.
+- Valores de segment: "01 - TOP", "02 - PARTICULARES", "03 - UNIVERSITARIO".
+- region_code y entry_channel son códigos; no los traduzcas a nombres ni
+  interpretes su significado.
+- Para "cuántos clientes tienen X" usa la tabla clientes; para "cuántas ventas
+  de X" o márgenes, la tabla ventas.
 
 Responde en español, de forma breve y orientada a la acción. Si un resultado
 está truncado (n_filas mayor que los registros devueltos), indícalo.
@@ -52,14 +60,22 @@ HERRAMIENTAS = [
     {
         "name": "consultar_datos",
         "description": (
-            "Filtra y resume el dataset de ventas y clientes de easyMoney. "
-            "Permite filtrar por igualdad en cualquier columna, seleccionar "
-            "columnas, y agregar con 'count' (número de filas) o 'mean' "
-            "(media de las columnas numéricas seleccionadas)."
+            "Filtra y resume las tablas de easyMoney. La tabla 'clientes' tiene "
+            "una fila por cliente con su situación actual (datos sociodemográficos, "
+            "actividad, productos 0/1 y n_productos); úsala para contar clientes, "
+            "describir un cliente o calcular medias por perfil. La tabla 'ventas' "
+            "tiene una fila por venta 2018-2019 con margen y producto vendido; "
+            "úsala para preguntas sobre ventas o márgenes. Permite filtrar por "
+            "igualdad, seleccionar columnas y agregar con 'count' o 'mean'."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
+                "tabla": {
+                    "type": "string",
+                    "enum": ["clientes", "ventas"],
+                    "description": "Tabla a consultar. Por defecto 'clientes'.",
+                },
                 "filtros": {
                     "type": "object",
                     "description": "Condiciones de igualdad columna -> valor. Ejemplo: {\"pension_plan\": 1}.",
