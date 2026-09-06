@@ -1,6 +1,7 @@
 anthropic
 streamlit
 pandas
+pyarrow
 scikit-learn
 shap
 python-dotenv
