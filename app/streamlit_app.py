@@ -111,10 +111,11 @@ if pregunta:
         st.markdown(pregunta)
 
     with st.chat_message("assistant", avatar=AVATARES["assistant"]):
-        with st.spinner("Consultando datos..."):
+        with st.status("Trabajando...", expanded=True) as estado:
             texto, st.session_state.historial = responder(
-                pregunta, st.session_state.historial
+                pregunta, st.session_state.historial, on_evento=estado.write
             )
+            estado.update(label="Detalle de la consulta", state="complete", expanded=False)
         st.markdown(texto)
 
     st.session_state.chat.append({"rol": "assistant", "texto": texto})

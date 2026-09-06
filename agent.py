@@ -252,16 +252,27 @@ def ejecutar_herramienta(nombre: str, argumentos: dict) -> str:
     return salida
 
 
-def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
+def responder(
+    pregunta: str,
+    historial: list | None = None,
+    on_evento=None,
+) -> tuple[str, list]:
     """Responde a una pregunta ejecutando herramientas si el modelo lo pide.
 
     Devuelve el texto final y el historial actualizado, para poder mantener
-    una conversación con varios turnos.
+    una conversación con varios turnos. Si se pasa `on_evento`, se llama con
+    un texto descriptivo en cada paso (para mostrar progreso en la interfaz).
     """
+    def avisar(texto: str) -> None:
+        _log(texto)
+        if on_evento:
+            on_evento(texto)
+
     mensajes = list(historial or [])
     mensajes.append({"role": "user", "content": pregunta})
 
     for vuelta in range(MAX_VUELTAS):
+        avisar(f"Pensando (paso {vuelta + 1})...")
         respuesta = cliente.messages.create(
             model=MODELO,
             max_tokens=4096,
@@ -270,10 +281,7 @@ def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
             messages=mensajes,
         )
         mensajes.append({"role": "assistant", "content": respuesta.content})
-        _log(
-            f"[agente] vuelta={vuelta + 1} stop_reason={respuesta.stop_reason} "
-            f"bloques={[b.type for b in respuesta.content]}"
-        )
+        avisar(f"Paso {vuelta + 1}: {respuesta.stop_reason}, bloques {[b.type for b in respuesta.content]}")
 
         if respuesta.stop_reason != "tool_use":
             texto = "".join(b.text for b in respuesta.content if b.type == "text")
@@ -284,15 +292,15 @@ def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
         resultados = []
         for bloque in respuesta.content:
             if bloque.type == "tool_use":
-                _log(f"[agente] herramienta={bloque.name} args={bloque.input}")
+                avisar(f"Ejecutando {bloque.name} con {bloque.input}")
                 salida = ejecutar_herramienta(bloque.name, bloque.input)
-                _log(f"[agente] resultado={len(salida)} caracteres")
+                avisar(f"Resultado de {bloque.name}: {len(salida)} caracteres")
                 resultados.append(
                     {"type": "tool_result", "tool_use_id": bloque.id, "content": salida}
                 )
         mensajes.append({"role": "user", "content": resultados})
 
-    _log("[agente] tope de vueltas alcanzado")
+    avisar("Tope de vueltas alcanzado")
     mensajes.append({"role": "assistant", "content": "No he podido completar la respuesta."})
     return "No he podido completar la respuesta en un número razonable de pasos. Prueba a concretar la pregunta.", mensajes
 
