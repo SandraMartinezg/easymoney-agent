@@ -57,7 +57,7 @@ easymoney-agent/
 
 ## Datos y modelos
 
-No se versionan. Se copian desde el repo del TFM a `data/` y `models/`:
+Se incluyen en el repo (todos por debajo de 100 MB) para que la app pueda desplegarse en Streamlit Community Cloud. Proceden del repo del TFM::
 
 - `df_powerbi.csv` (desde `data/processed/`): 240.773 filas, una por venta 2018-2019, con datos del cliente en ese mes. Separador `;` y coma decimal. La columna `em_acount` se escribe así intencionadamente.
 - `clientes.csv`: una fila por cliente (456.373) con su última foto (mayo 2019). Se genera con `python scripts/preparar_clientes.py RUTA_RAW_DEL_TFM`, donde `RUTA_RAW_DEL_TFM` es la carpeta `data/raw/` del repo del TFM.
@@ -66,11 +66,9 @@ No se versionan. Se copian desde el repo del TFM a `data/` y `models/`:
 - `X_scoring_pension_plan.parquet` (desde `data/processed/`): matriz de variables de los clientes elegibles tal como la ve el modelo, exportada desde el notebook de la Tarea 2.
 - `models/modelo_pension_plan.joblib`: Random Forest de la Tarea 2, exportado desde el notebook con `joblib.dump`. Se entrenó con scikit-learn 1.6.1 y carga con 1.9.0 mostrando un aviso de versión, que se silencia en `explicar_prediccion` tras verificar que las probabilidades recalculadas coinciden con el scoring original.
 
-## Fases
+## ## Demo
 
-- **Fase 0**: README y firma de las herramientas, sin LLM. Completada.
-- **Fase 1**: `consultar_datos`, bucle del agente e interfaz Streamlit. Completada.
-- **Fase 2**: `predecir_propension`, `obtener_segmento`, `recomendar_contactos` y `explicar_prediccion`. Completada.
+La app está desplegada en Streamlit Community Cloud: https://easymoney-agent-z3fqqezy2zdp8w65slnbe3.streamlit.app
 
 ## Puesta en marcha
 
