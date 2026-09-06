@@ -27,6 +27,7 @@ def consultar_datos(
     filtros: dict | None = None,
     columnas: list[str] | None = None,
     agregacion: str | None = None,
+    agrupar_por: str | None = None,
     limite: int = 20,
 ) -> dict:
     """Filtra y resume una tabla de easyMoney.
@@ -40,16 +41,19 @@ def consultar_datos(
             Si es None, no se filtra.
         columnas: Columnas a devolver. Si es None, se devuelven todas.
         agregacion: Si se indica, en lugar de filas devuelve un resumen.
-            Valores admitidos: "count" (número de filas) o "mean"
-            (media de las columnas numéricas indicadas en `columnas`).
-        limite: Número máximo de filas a devolver cuando no hay agregación.
+            Valores admitidos: "count" (número de filas), "mean" (media de
+            las columnas numéricas indicadas en `columnas`) o "sum" (suma).
+        agrupar_por: Columna por la que agrupar la agregación. Ejemplo:
+            agregacion="count", agrupar_por="product_desc" devuelve el
+            número de filas por producto, ordenado de mayor a menor.
+        limite: Número máximo de filas (o de grupos) a devolver.
 
     Returns:
         Diccionario con tres claves:
         - "tabla": la tabla consultada.
         - "n_filas": número de filas que cumplen los filtros.
-        - "resultado": lista de registros (dict por fila) o, si hay
-          agregación, un dict con el valor agregado.
+        - "resultado": lista de registros (dict por fila), un dict con el
+          valor agregado, o una lista de dicts (uno por grupo) si se agrupa.
     """
     if tabla not in TABLAS:
         raise ValueError(f"Tabla '{tabla}' no existe. Usa una de {TABLAS}.")
@@ -64,13 +68,32 @@ def consultar_datos(
                 valor = float(valor)
             df = df[df[columna] == valor]
 
+    if agrupar_por and agrupar_por not in df.columns:
+        raise ValueError(f"La columna '{agrupar_por}' no existe en la tabla '{tabla}'.")
+
     if columnas:
         inexistentes = [c for c in columnas if c not in df.columns]
         if inexistentes:
             raise ValueError(f"Columnas inexistentes en '{tabla}': {inexistentes}")
+        if agrupar_por and agrupar_por not in columnas:
+            columnas = columnas + [agrupar_por]
         df = df[columnas]
 
     n_filas = len(df)
+
+    if agregacion is not None and agregacion not in ("count", "mean", "sum"):
+        raise ValueError(f"Agregación no admitida: '{agregacion}'. Usa 'count', 'mean' o 'sum'.")
+
+    if agregacion and agrupar_por:
+        grupos = df.groupby(agrupar_por)
+        if agregacion == "count":
+            resumen = grupos.size().rename("count").to_frame()
+        elif agregacion == "mean":
+            resumen = grupos[[c for c in df.select_dtypes("number").columns if c != agrupar_por]].mean().round(2)
+        else:
+            resumen = grupos[[c for c in df.select_dtypes("number").columns if c != agrupar_por]].sum().round(2)
+        resumen = resumen.sort_values(resumen.columns[0], ascending=False).head(limite)
+        return {"tabla": tabla, "n_filas": n_filas, "resultado": resumen.reset_index().to_dict(orient="records")}
 
     if agregacion == "count":
         return {"tabla": tabla, "n_filas": n_filas, "resultado": {"count": n_filas}}
@@ -79,8 +102,9 @@ def consultar_datos(
         medias = df.select_dtypes("number").mean().round(2)
         return {"tabla": tabla, "n_filas": n_filas, "resultado": medias.to_dict()}
 
-    if agregacion is not None:
-        raise ValueError(f"Agregación no admitida: '{agregacion}'. Usa 'count' o 'mean'.")
+    if agregacion == "sum":
+        sumas = df.select_dtypes("number").sum().round(2)
+        return {"tabla": tabla, "n_filas": n_filas, "resultado": sumas.to_dict()}
 
     filas = df.head(limite).astype(object).where(pd.notna(df.head(limite)), None)
     return {"tabla": tabla, "n_filas": n_filas, "resultado": filas.to_dict(orient="records")}
