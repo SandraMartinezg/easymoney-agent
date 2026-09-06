@@ -61,6 +61,8 @@ Sobre los datos:
 
 Responde en español, de forma breve y orientada a la acción. Si un resultado
 está truncado (n_filas mayor que los registros devueltos), indícalo.
+No menciones los nombres de las herramientas al usuario; ofrece lo que puedes
+hacer en lenguaje de negocio ("puedo prepararte los argumentos de la llamada").
 """
 
 HERRAMIENTAS = [
