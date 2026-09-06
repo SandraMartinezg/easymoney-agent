@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 import traceback
 
 from anthropic import Anthropic
@@ -16,6 +17,8 @@ from tools.recomendar_contactos import recomendar_contactos
 load_dotenv()
 
 MODELO = "claude-sonnet-5"
+MAX_VUELTAS = 8
+MAX_CARACTERES_RESULTADO = 20000
 
 SYSTEM_PROMPT = """Eres el asistente de cross-selling de easyMoney, una fintech.
 Ayudas al equipo comercial a decidir a quién contactar y con qué argumentos.
@@ -222,7 +225,8 @@ FUNCIONES = {
 cliente = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
-MAX_CARACTERES_RESULTADO = 20000
+def _log(mensaje: str) -> None:
+    print(mensaje, file=sys.stderr, flush=True)
 
 
 def ejecutar_herramienta(nombre: str, argumentos: dict) -> str:
@@ -230,12 +234,12 @@ def ejecutar_herramienta(nombre: str, argumentos: dict) -> str:
     try:
         resultado = FUNCIONES[nombre](**argumentos)
     except Exception as e:
-        print(f"[herramienta {nombre}] {type(e).__name__}: {e}", flush=True)
+        _log(f"[herramienta {nombre}] {type(e).__name__}: {e}")
         traceback.print_exc()
         resultado = {"error": str(e)}
     salida = json.dumps(resultado, ensure_ascii=False, default=str)
     if len(salida) > MAX_CARACTERES_RESULTADO:
-        print(f"[herramienta {nombre}] resultado truncado: {len(salida)} caracteres", flush=True)
+        _log(f"[herramienta {nombre}] resultado truncado: {len(salida)} caracteres")
         salida = json.dumps(
             {
                 "error": (
@@ -257,7 +261,7 @@ def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
     mensajes = list(historial or [])
     mensajes.append({"role": "user", "content": pregunta})
 
-    while True:
+    for vuelta in range(MAX_VUELTAS):
         respuesta = cliente.messages.create(
             model=MODELO,
             max_tokens=4096,
@@ -266,10 +270,9 @@ def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
             messages=mensajes,
         )
         mensajes.append({"role": "assistant", "content": respuesta.content})
-        print(
-            f"[agente] stop_reason={respuesta.stop_reason} "
-            f"bloques={[b.type for b in respuesta.content]}",
-            flush=True,
+        _log(
+            f"[agente] vuelta={vuelta + 1} stop_reason={respuesta.stop_reason} "
+            f"bloques={[b.type for b in respuesta.content]}"
         )
 
         if respuesta.stop_reason != "tool_use":
@@ -281,12 +284,17 @@ def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
         resultados = []
         for bloque in respuesta.content:
             if bloque.type == "tool_use":
-                print(f"[agente] herramienta={bloque.name} args={bloque.input}", flush=True)
+                _log(f"[agente] herramienta={bloque.name} args={bloque.input}")
                 salida = ejecutar_herramienta(bloque.name, bloque.input)
+                _log(f"[agente] resultado={len(salida)} caracteres")
                 resultados.append(
                     {"type": "tool_result", "tool_use_id": bloque.id, "content": salida}
                 )
         mensajes.append({"role": "user", "content": resultados})
+
+    _log("[agente] tope de vueltas alcanzado")
+    mensajes.append({"role": "assistant", "content": "No he podido completar la respuesta."})
+    return "No he podido completar la respuesta en un número razonable de pasos. Prueba a concretar la pregunta.", mensajes
 
 
 if __name__ == "__main__":
