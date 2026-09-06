@@ -1,4 +1,4 @@
-
+    
 
 # easymoney-agent
 
@@ -71,6 +71,8 @@ Se incluyen en el repo (todos por debajo de 100 MB) para que la app pueda desple
 La app está desplegada en Streamlit Community Cloud: https://easymoney-agent-z3fqqezy2zdp8w65slnbe3.streamlit.app
 
 ## Puesta en marcha
+
+Al desplegar en Streamlit Community Cloud, los cambios en `agent.py` o en `tools/` requieren reiniciar la app (Manage app → Reboot app), porque Streamlit solo recarga el script principal.
 
 ```bash
 python3 -m venv .venv
