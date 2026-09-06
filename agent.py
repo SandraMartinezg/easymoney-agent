@@ -245,20 +245,28 @@ def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
     while True:
         respuesta = cliente.messages.create(
             model=MODELO,
-            max_tokens=1024,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
             tools=HERRAMIENTAS,
             messages=mensajes,
         )
         mensajes.append({"role": "assistant", "content": respuesta.content})
+        print(
+            f"[agente] stop_reason={respuesta.stop_reason} "
+            f"bloques={[b.type for b in respuesta.content]}",
+            flush=True,
+        )
 
         if respuesta.stop_reason != "tool_use":
             texto = "".join(b.text for b in respuesta.content if b.type == "text")
+            if not texto:
+                texto = "No he podido completar la respuesta. Vuelve a intentarlo."
             return texto, mensajes
 
         resultados = []
         for bloque in respuesta.content:
             if bloque.type == "tool_use":
+                print(f"[agente] herramienta={bloque.name} args={bloque.input}", flush=True)
                 salida = ejecutar_herramienta(bloque.name, bloque.input)
                 resultados.append(
                     {"type": "tool_result", "tool_use_id": bloque.id, "content": salida}
