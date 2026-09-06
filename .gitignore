@@ -1,7 +1,3 @@
-# Datos y modelos (pesados, no van a GitHub)
-data/
-models/
-
 # Secretos
 .env
 
