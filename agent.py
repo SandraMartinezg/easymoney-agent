@@ -222,6 +222,9 @@ FUNCIONES = {
 cliente = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
+MAX_CARACTERES_RESULTADO = 20000
+
+
 def ejecutar_herramienta(nombre: str, argumentos: dict) -> str:
     """Ejecuta la función Python asociada y devuelve el resultado como texto."""
     try:
@@ -230,7 +233,19 @@ def ejecutar_herramienta(nombre: str, argumentos: dict) -> str:
         print(f"[herramienta {nombre}] {type(e).__name__}: {e}", flush=True)
         traceback.print_exc()
         resultado = {"error": str(e)}
-    return json.dumps(resultado, ensure_ascii=False, default=str)
+    salida = json.dumps(resultado, ensure_ascii=False, default=str)
+    if len(salida) > MAX_CARACTERES_RESULTADO:
+        print(f"[herramienta {nombre}] resultado truncado: {len(salida)} caracteres", flush=True)
+        salida = json.dumps(
+            {
+                "error": (
+                    f"El resultado es demasiado grande ({len(salida)} caracteres). "
+                    "Repite la consulta con filtros, agregación o un límite menor."
+                )
+            },
+            ensure_ascii=False,
+        )
+    return salida
 
 
 def responder(pregunta: str, historial: list | None = None) -> tuple[str, list]:
