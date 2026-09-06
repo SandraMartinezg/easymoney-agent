@@ -1,6 +1,17 @@
 """Consulta sobre df_powerbi.csv: filtrado, selección de columnas y agregación."""
 
+from functools import lru_cache
+from pathlib import Path
+
 import pandas as pd
+
+RUTA_DATOS = Path(__file__).resolve().parent.parent / "data" / "df_powerbi.csv"
+
+
+@lru_cache(maxsize=1)
+def _cargar_datos() -> pd.DataFrame:
+    """Lee el CSV una sola vez y lo mantiene en memoria."""
+    return pd.read_csv(RUTA_DATOS, sep=";", decimal=",")
 
 
 def consultar_datos(
@@ -27,4 +38,32 @@ def consultar_datos(
         - "resultado": lista de registros (dict por fila) o, si hay
           agregación, un dict con el valor agregado.
     """
-    raise NotImplementedError
+    df = _cargar_datos()
+
+    if filtros:
+        for columna, valor in filtros.items():
+            if columna not in df.columns:
+                raise ValueError(f"La columna '{columna}' no existe en el dataset.")
+            if pd.api.types.is_numeric_dtype(df[columna]) and isinstance(valor, str):
+                valor = float(valor)
+            df = df[df[columna] == valor]
+
+    if columnas:
+        inexistentes = [c for c in columnas if c not in df.columns]
+        if inexistentes:
+            raise ValueError(f"Columnas inexistentes: {inexistentes}")
+        df = df[columnas]
+
+    n_filas = len(df)
+
+    if agregacion == "count":
+        return {"n_filas": n_filas, "resultado": {"count": n_filas}}
+
+    if agregacion == "mean":
+        medias = df.select_dtypes("number").mean().round(2)
+        return {"n_filas": n_filas, "resultado": medias.to_dict()}
+
+    if agregacion is not None:
+        raise ValueError(f"Agregación no admitida: '{agregacion}'. Usa 'count' o 'mean'.")
+
+    return {"n_filas": n_filas, "resultado": df.head(limite).to_dict(orient="records")}
