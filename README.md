@@ -43,7 +43,10 @@ Las herramientas son funciones Python puras, sin dependencia del LLM, y se prueb
 easymoney-agent/
 ├── agent.py              # Bucle del agente: pregunta → LLM → herramienta → respuesta
 ├── app/
-│   └── streamlit_app.py  # Interfaz de chat
+│   ├── streamlit_app.py  # Interfaz de chat
+│   └── assets/           # Logo y avatares
+├── .streamlit/
+│   └── config.toml       # Tema con los colores corporativos
 ├── tools/                # Una función por herramienta, sin dependencia del LLM
 ├── scripts/              # Preparación de datos (se ejecuta una vez)
 ├── data/                 # Datos (no versionados)
