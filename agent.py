@@ -2,6 +2,7 @@
 
 import json
 import os
+import traceback
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
@@ -216,6 +217,8 @@ def ejecutar_herramienta(nombre: str, argumentos: dict) -> str:
     try:
         resultado = FUNCIONES[nombre](**argumentos)
     except Exception as e:
+        print(f"[herramienta {nombre}] {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
         resultado = {"error": str(e)}
     return json.dumps(resultado, ensure_ascii=False, default=str)
 
