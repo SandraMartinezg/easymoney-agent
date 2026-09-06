@@ -252,6 +252,58 @@ def ejecutar_herramienta(nombre: str, argumentos: dict) -> str:
     return salida
 
 
+NOMBRES_NEGOCIO = {
+    "consultar_datos": "Consultando datos",
+    "predecir_propension": "Calculando propensión de compra",
+    "obtener_segmento": "Consultando el grupo del cliente",
+    "recomendar_contactos": "Aplicando la estrategia de campaña",
+    "explicar_prediccion": "Analizando qué explica la predicción",
+}
+
+
+def _describir(nombre: str, argumentos: dict) -> str:
+    """Frase en lenguaje de negocio para mostrar al usuario."""
+    base = NOMBRES_NEGOCIO.get(nombre, nombre)
+    detalles = []
+    if argumentos.get("tabla"):
+        detalles.append(f"tabla de {argumentos['tabla']}")
+    if argumentos.get("agrupar_por"):
+        detalles.append(f"por {argumentos['agrupar_por']}")
+    if argumentos.get("filtros"):
+        detalles.append(", ".join(f"{k} = {v}" for k, v in argumentos["filtros"].items()))
+    if argumentos.get("cliente_id"):
+        detalles.append(f"cliente {argumentos['cliente_id']}")
+    if argumentos.get("producto"):
+        detalles.append(argumentos["producto"])
+    return f"{base} ({'; '.join(detalles)})..." if detalles else f"{base}..."
+
+
+NOMBRES_NEGOCIO = {
+    "consultar_datos": "Consultando datos",
+    "predecir_propension": "Calculando propensión de compra",
+    "obtener_segmento": "Consultando el grupo del cliente",
+    "recomendar_contactos": "Aplicando la estrategia de campaña",
+    "explicar_prediccion": "Analizando qué explica la predicción",
+}
+
+
+def _describir(nombre: str, argumentos: dict) -> str:
+    """Frase en lenguaje de negocio para mostrar al usuario."""
+    base = NOMBRES_NEGOCIO.get(nombre, nombre)
+    detalles = []
+    if argumentos.get("tabla"):
+        detalles.append(f"tabla de {argumentos['tabla']}")
+    if argumentos.get("agrupar_por"):
+        detalles.append(f"por {argumentos['agrupar_por']}")
+    if argumentos.get("filtros"):
+        detalles.append(", ".join(f"{k} = {v}" for k, v in argumentos["filtros"].items()))
+    if argumentos.get("cliente_id"):
+        detalles.append(f"cliente {argumentos['cliente_id']}")
+    if argumentos.get("producto"):
+        detalles.append(argumentos["producto"])
+    return f"{base} ({'; '.join(detalles)})..." if detalles else f"{base}..."
+
+
 def responder(
     pregunta: str,
     historial: list | None = None,
@@ -261,18 +313,12 @@ def responder(
 
     Devuelve el texto final y el historial actualizado, para poder mantener
     una conversación con varios turnos. Si se pasa `on_evento`, se llama con
-    un texto descriptivo en cada paso (para mostrar progreso en la interfaz).
+    una frase de negocio en cada paso (para mostrar progreso en la interfaz).
     """
-    def avisar(texto: str) -> None:
-        _log(texto)
-        if on_evento:
-            on_evento(texto)
-
     mensajes = list(historial or [])
     mensajes.append({"role": "user", "content": pregunta})
 
     for vuelta in range(MAX_VUELTAS):
-        avisar(f"Pensando (paso {vuelta + 1})...")
         respuesta = cliente.messages.create(
             model=MODELO,
             max_tokens=4096,
@@ -281,7 +327,7 @@ def responder(
             messages=mensajes,
         )
         mensajes.append({"role": "assistant", "content": respuesta.content})
-        avisar(f"Paso {vuelta + 1}: {respuesta.stop_reason}, bloques {[b.type for b in respuesta.content]}")
+        _log(f"[agente] vuelta={vuelta + 1} stop_reason={respuesta.stop_reason} bloques={[b.type for b in respuesta.content]}")
 
         if respuesta.stop_reason != "tool_use":
             texto = "".join(b.text for b in respuesta.content if b.type == "text")
@@ -292,15 +338,17 @@ def responder(
         resultados = []
         for bloque in respuesta.content:
             if bloque.type == "tool_use":
-                avisar(f"Ejecutando {bloque.name} con {bloque.input}")
+                _log(f"[agente] herramienta={bloque.name} args={bloque.input}")
+                if on_evento:
+                    on_evento(_describir(bloque.name, bloque.input))
                 salida = ejecutar_herramienta(bloque.name, bloque.input)
-                avisar(f"Resultado de {bloque.name}: {len(salida)} caracteres")
+                _log(f"[agente] resultado={len(salida)} caracteres")
                 resultados.append(
                     {"type": "tool_result", "tool_use_id": bloque.id, "content": salida}
                 )
         mensajes.append({"role": "user", "content": resultados})
 
-    avisar("Tope de vueltas alcanzado")
+    _log("[agente] tope de vueltas alcanzado")
     mensajes.append({"role": "assistant", "content": "No he podido completar la respuesta."})
     return "No he podido completar la respuesta en un número razonable de pasos. Prueba a concretar la pregunta.", mensajes
 
