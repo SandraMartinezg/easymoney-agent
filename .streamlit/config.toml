@@ -3,3 +3,6 @@ primaryColor = "#7CC242"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F4F4F2"
 textColor = "#1F1F1F"
+
+[theme.sidebar]
+backgroundColor = "#EEF5E8"
